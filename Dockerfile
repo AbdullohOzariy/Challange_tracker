@@ -12,7 +12,7 @@ COPY index.html ./
 COPY src ./src
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Build
 RUN npm run build
