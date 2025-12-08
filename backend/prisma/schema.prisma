@@ -1,0 +1,189 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Model
+model User {
+  id                String     @id @default(uuid())
+  telegramId        String     @unique
+  username          String?
+  firstName         String?
+  lastName          String?
+  photoUrl          String?
+  email             String?    @unique
+  isVerified        Boolean    @default(false)
+  verificationToken String?    @unique
+  verificationSentAt DateTime?
+
+  // Relations
+  globalUserId      String     @unique // For linking with frontend
+  groupMemberships  GroupMember[]
+  taskCompletions   TaskCompletion[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([telegramId])
+  @@index([isVerified])
+}
+
+// Group Model
+model Group {
+  id                String     @id @default(uuid())
+  name              String
+  description       String?
+  icon              String?    @default("✨")
+  theme             String?    @default("indigo")
+  createdById       String
+
+  // Relations
+  members           GroupMember[]
+  challenges        Challenge[]
+  penaltyConfig     PenaltyConfig?
+  activityLog       ActivityLog[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([createdById])
+}
+
+// Group Member Model
+model GroupMember {
+  id                String     @id @default(uuid())
+  groupId           String
+  userId            String
+  displayName       String
+  avatar            String?    @default("👤")
+  role              String     @default("member") // admin, member
+  strikes           Int        @default(0)
+  penaltiesPaid     Int        @default(0)
+  joinedAt          DateTime   @default(now())
+
+  // Relations
+  group             Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskCompletions   TaskCompletion[]
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+// Challenge Model
+model Challenge {
+  id                String     @id @default(uuid())
+  groupId           String
+  title             String
+  description       String?
+  category          String     // FITNESS, LEARNING, MINDFULNESS, PRODUCTIVITY, HEALTH, OTHER
+  startDate         DateTime
+  durationDays      Int
+  color             String?    @default("indigo")
+  mode              String     @default("solo") // solo, duo
+  status            String     @default("active") // setup, active, completed, archived
+  deadlineTime      String?    // HH:MM format
+  frequency         String?    @default("daily") // daily, 2days, 3days, weekly, weekdays, custom
+  customFrequencyDays Int?
+
+  // Relations
+  group             Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  tasks             Task[]
+  completions       TaskCompletion[]
+  activityLog       ActivityLog[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([groupId])
+  @@index([status])
+}
+
+// Task Model
+model Task {
+  id                String     @id @default(uuid())
+  challengeId       String
+  dayNumber         Int
+  title             String
+  description       String?
+  isRequired        Boolean    @default(true)
+
+  // Relations
+  challenge         Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  completions       TaskCompletion[]
+
+  @@unique([challengeId, dayNumber])
+  @@index([challengeId])
+}
+
+// Task Completion Model
+model TaskCompletion {
+  id                String     @id @default(uuid())
+  taskId            String
+  challengeId       String
+  memberId          String
+  proofUrl          String?    // Optional image/proof
+  notes             String?
+  completedAt       DateTime   @default(now())
+
+  // Relations
+  task              Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  challenge         Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  member            GroupMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, memberId])
+  @@index([taskId])
+  @@index([memberId])
+  @@index([completedAt])
+}
+
+// Penalty Config Model
+model PenaltyConfig {
+  id                String     @id @default(uuid())
+  groupId           String     @unique
+  threshold         Int        // e.g., Every 3 strikes
+  description       String     // e.g., "Buy Coffee" or "50 Pushups"
+
+  // Relations
+  group             Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+// Activity Log Model
+model ActivityLog {
+  id                String     @id @default(uuid())
+  groupId           String
+  challengeId       String
+  memberId          String?
+  action            String     // task_completed, challenge_created, member_joined, etc
+  description       String?
+  metadata          String?    // JSON
+  createdAt         DateTime   @default(now())
+
+  // Relations
+  group             Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  challenge         Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([createdAt])
+}
+
+// Telegram Verification Model
+model TelegramVerification {
+  id                String     @id @default(uuid())
+  userId            String     @unique
+  telegramId        String     @unique
+  token             String     @unique
+  isVerified        Boolean    @default(false)
+  verifiedAt        DateTime?
+  expiresAt         DateTime
+  createdAt         DateTime   @default(now())
+
+  @@index([telegramId])
+  @@index([isVerified])
+}
+

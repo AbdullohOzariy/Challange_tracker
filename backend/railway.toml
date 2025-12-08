@@ -1,0 +1,12 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "npm run prisma:generate && npm run prisma:migrate && npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+[env]
+NODE_ENV = "production"
+

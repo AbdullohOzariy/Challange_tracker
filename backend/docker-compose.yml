@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: habithero_postgres
+    environment:
+      POSTGRES_USER: habithero
+      POSTGRES_PASSWORD: habithero_password
+      POSTGRES_DB: habithero
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habithero"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Server
+  backend:
+    build: .
+    container_name: habithero_backend
+    environment:
+      DATABASE_URL: postgresql://habithero:habithero_password@postgres:5432/habithero
+      PORT: 3000
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-habithero_bot}
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+    command: npm run dev
+
+  # Frontend (optional, can be run separately)
+  # frontend:
+  #   build: ../
+  #   container_name: habithero_frontend
+  #   ports:
+  #     - "5173:5173"
+  #   environment:
+  #     VITE_API_URL: http://localhost:3000/api
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: habithero_network
+
