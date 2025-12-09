@@ -1,0 +1,27 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "services": [
+    {
+      "name": "frontend",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile"
+      },
+      "deploy": {
+        "startCommand": "serve -s dist -l ${PORT:-3000}",
+        "healthcheckPath": "/"
+      }
+    },
+    {
+      "name": "backend",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "backend/Dockerfile"
+      },
+      "deploy": {
+        "startCommand": "npm start",
+        "healthcheckPath": "/"
+      }
+    }
+  ]
+}
