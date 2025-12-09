@@ -26,7 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.8.0",
-    "@telegraf/types": "^4.12.0",
+    "@telegraf/types": "^4.15.0",
     "axios": "^1.6.8",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
