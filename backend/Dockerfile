@@ -6,7 +6,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
+# Clean npm cache and install dependencies
+RUN npm cache clean --force
 RUN npm install
 
 # Copy source code
@@ -24,4 +25,3 @@ EXPOSE 3000
 
 # Start the server
 CMD ["npm", "start"]
-
