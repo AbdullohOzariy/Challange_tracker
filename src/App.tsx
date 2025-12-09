@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { apiClient } from './services/apiClient';
 import { useAppContext } from './context/AppContext';
-import { IconLogOut, IconPlus, IconUsers } from './components/Icons';
+import { IconLogOut, IconPlus, IconUsers } from '../components/Icons.tsx';
 
 const App: React.FC = () => {
   const { user, setUser, groups, setGroups, loading, setLoading, error, setError, currentGroupId, setCurrentGroupId, logout } = useAppContext();
@@ -201,4 +201,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
