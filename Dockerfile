@@ -2,14 +2,20 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and configs
 COPY package*.json ./
 COPY tsconfig.json ./
 COPY vite.config.ts ./
 COPY index.html ./
 
-# Copy source code
+# Copy source code and components
 COPY src ./src
+COPY components ./components
+COPY services ./services
+COPY types.ts ./
+COPY App.tsx ./
+COPY index.tsx ./
+
 
 # Install dependencies
 RUN npm install
@@ -37,4 +43,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 
 # Start the app
 CMD ["serve", "-s", "dist", "-l", "3000"]
-
