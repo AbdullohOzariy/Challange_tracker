@@ -253,4 +253,27 @@ Enter this code in the HabitHero app to log in.
   async handleUpdate(update: any) {
     await this.bot.handleUpdate(update);
   }
+
+  async sendMessage(telegramId: string, message: string, options?: any) {
+    try {
+      await this.bot.telegram.sendMessage(Number(telegramId), message, options);
+    } catch (error) {
+      console.error('Send message error:', error);
+    }
+  }
+
+  async sendNotification(userId: string, message: string) {
+    try {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user) {
+        await this.sendMessage(user.telegramId, `🔔 ${message}`);
+      }
+    } catch (error) {
+      console.error('Send notification error:', error);
+    }
+  }
+
+  getBot() {
+    return this.bot;
+  }
 }
