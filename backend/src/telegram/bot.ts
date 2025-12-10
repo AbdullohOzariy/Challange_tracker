@@ -84,7 +84,7 @@ export class TelegrafBot {
 I'm your personal habit tracking companion. Let's build better habits together! 💪
 
 <b>Commands:</b>
-/verify - Get your login link
+/verify - Get your login code
 /status - Check your progress
 /challenges - View active challenges
 /groups - View your groups
@@ -94,7 +94,7 @@ I'm your personal habit tracking companion. Let's build better habits together! 
         await ctx.replyWithHTML(welcomeMessage, {
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🔐 Login to HabitHero', callback_data: 'verify_start' }],
+              [{ text: '🔐 Get Login Code', callback_data: 'verify_start' }],
             ],
           },
         });
@@ -128,19 +128,14 @@ I'm your personal habit tracking companion. Let's build better habits together! 
           },
         });
 
-        const loginUrl = `${process.env.FRONTEND_URL}?code=${verificationCode}&tid=${user.telegramId}`;
-
         await ctx.replyWithHTML(`
-🔐 <b>Login Link</b>
+🔐 <b>Your Login Code</b>
 
-Click the button below to log in automatically:
-        `, {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '🚀 Login Now', url: loginUrl }],
-            ],
-          },
-        });
+Your one-time login code is:
+<code>${verificationCode}</code>
+
+Enter this code in the HabitHero app to log in.
+        `);
       } catch (error) {
         console.error('Verify command error:', error);
         await ctx.reply('❌ Error. Please try again.');
@@ -198,7 +193,7 @@ Click the button below to log in automatically:
 <b>HabitHero Bot Commands:</b>
 
 /start - Start the bot
-/verify - Get login link
+/verify - Get login code
 /status - Check your progress
 /challenges - View active challenges
 /groups - View your groups
@@ -234,20 +229,15 @@ Click the button below to log in automatically:
           },
         });
 
-        const loginUrl = `${process.env.FRONTEND_URL}?code=${verificationCode}&tid=${user.telegramId}`;
-
-        await ctx.answerCbQuery('Generating login link...', { show_alert: false });
+        await ctx.answerCbQuery('Sending login code...', { show_alert: false });
         await ctx.replyWithHTML(`
-🔐 <b>Login Link</b>
+🔐 <b>Your Login Code</b>
 
-Click the button below to log in automatically:
-        `, {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '🚀 Login Now', url: loginUrl }],
-            ],
-          },
-        });
+Your one-time login code is:
+<code>${verificationCode}</code>
+
+Enter this code in the HabitHero app to log in.
+        `);
       } catch (error) {
         console.error('Verify action error:', error);
         await ctx.answerCbQuery('❌ Error', { show_alert: true });

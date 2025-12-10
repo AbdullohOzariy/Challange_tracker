@@ -5,71 +5,67 @@ import { IconLogOut, IconPlus, IconUsers } from '../components/Icons.tsx';
 
 const App: React.FC = () => {
   const { user, setUser, groups, setGroups, loading, setLoading, error, setError, currentGroupId, setCurrentGroupId, logout } = useAppContext();
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [loginCode, setLoginCode] = useState('');
+  const [telegramId, setTelegramId] = useState('');
 
-  // Check for login code in URL and existing token
+  // Check for existing token
   useEffect(() => {
     const checkAuth = async () => {
-      // Set a timeout to prevent infinite loading
-      const timeoutId = setTimeout(() => {
-        if (loading) {
-          setLoading(false);
-          setError('Connection timeout. Please check your internet or try again later.');
-        }
-      }, 10000); // 10 seconds timeout
-
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const tid = urlParams.get('tid');
-
-        if (code && tid) {
-          // Handle URL login
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
           setLoading(true);
-          setError(null);
-          const response = await apiClient.verifyCode({ code, telegramId: tid });
-          localStorage.setItem('auth_token', response.data.token);
+          const response = await apiClient.getCurrentUser();
           setUser(response.data.user);
-
-          // Clean URL
-          window.history.replaceState({}, document.title, "/");
-
-          // Reload groups after successful login
           const groupsResponse = await apiClient.getGroups();
           setGroups(groupsResponse.data.groups);
-        } else {
-          // Check for existing token
-          const token = localStorage.getItem('auth_token');
-          if (token) {
-            setLoading(true);
-            const response = await apiClient.getCurrentUser();
-            setUser(response.data.user);
-            const groupsResponse = await apiClient.getGroups();
-            setGroups(groupsResponse.data.groups);
-          }
-        }
-      } catch (err) {
-        console.error('Auth check failed:', err);
-        // Only remove token if it's an auth error (401), not connection error
-        if (err instanceof Error && (err as any).response?.status === 401) {
+        } catch (err) {
+          console.error('Auth check failed:', err);
           localStorage.removeItem('auth_token');
+        } finally {
+          setLoading(false);
         }
-        // Don't show error for initial load if just no token
-        if (localStorage.getItem('auth_token') || window.location.search.includes('code')) {
-           setError(err instanceof Error ? err.message : 'Authentication failed');
-        }
-      } finally {
-        clearTimeout(timeoutId);
-        setLoading(false);
       }
     };
-
     checkAuth();
-  }, [setUser, setGroups, setLoading, setError]);
+  }, [setUser, setGroups, setLoading]);
 
   // Handle Telegram login (redirect to bot)
   const handleTelegramLogin = () => {
     const botUsername = "tekshiruv_verfbot";
     window.open(`https://t.me/${botUsername}`, '_blank');
+    setShowCodeInput(true);
+  };
+
+  // Handle code submission
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginCode || !telegramId) {
+      setError("Telegram ID and code are required.");
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiClient.verifyCode({ code: loginCode, telegramId });
+      localStorage.setItem('auth_token', response.data.token);
+      setUser(response.data.user);
+
+      // Clear fields and hide input
+      setShowCodeInput(false);
+      setLoginCode('');
+      setTelegramId('');
+
+      // Reload groups after successful login
+      const groupsResponse = await apiClient.getGroups();
+      setGroups(groupsResponse.data.groups);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Invalid code or Telegram ID.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Create new group
@@ -99,7 +95,6 @@ const App: React.FC = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
           <p className="text-slate-400">Loading...</p>
-          <p className="text-slate-600 text-xs mt-2">Connecting to server...</p>
         </div>
       </div>
     );
@@ -122,15 +117,41 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <button
-            onClick={handleTelegramLogin}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
-          >
-            🤖 Login with Telegram Bot
-          </button>
-          <p className="text-slate-400 text-xs text-center mt-6">
-            Click the button to open Telegram and get your login link.
-          </p>
+          {!showCodeInput ? (
+            <button
+              onClick={handleTelegramLogin}
+              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+            >
+              🤖 Login with Telegram Bot
+            </button>
+          ) : (
+            <form onSubmit={handleCodeSubmit} className="space-y-4">
+              <input
+                type="text"
+                value={telegramId}
+                onChange={(e) => setTelegramId(e.target.value)}
+                placeholder="Enter your Telegram ID"
+                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <input
+                type="text"
+                value={loginCode}
+                onChange={(e) => setLoginCode(e.target.value)}
+                placeholder="Enter 6-digit code from bot"
+                maxLength={6}
+                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+              >
+                Verify
+              </button>
+              <p className="text-slate-400 text-xs text-center mt-6">
+                Check your Telegram bot for the login code. You can get your Telegram ID from a bot like @userinfobot.
+              </p>
+            </form>
+          )}
         </div>
       </div>
     );
