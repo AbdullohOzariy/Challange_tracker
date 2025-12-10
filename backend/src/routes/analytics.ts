@@ -212,7 +212,11 @@ router.get('/challenge/:challengeId/progress', authMiddleware, async (req: AuthR
     const challenge = await prisma.challenge.findUnique({
       where: { id: challengeId },
       include: {
-        group: true,
+        group: {
+          include: {
+            members: true,
+          },
+        },
         tasks: {
           include: {
             completions: {
@@ -289,4 +293,3 @@ router.get('/challenge/:challengeId/progress', authMiddleware, async (req: AuthR
 });
 
 export default router;
-

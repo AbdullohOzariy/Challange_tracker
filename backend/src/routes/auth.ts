@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import { prisma } from '../index.js';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -203,4 +203,11 @@ router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) =
 });
 
 export default router;
+
+// utils
+interface JwtPayload  {
+  userId: string;
+  telegramId: string;
+}
+
 
