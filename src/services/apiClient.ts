@@ -47,22 +47,12 @@ class APIClient {
   }
 
   // Auth Endpoints
-  async telegramLogin(data: {
-    telegramId: string;
-    username?: string;
-    firstName?: string;
-    lastName?: string;
-    photoUrl?: string;
-  }) {
-    const response = await this.client.post('/auth/telegram-login', data);
+  async verifyCode(data: { code: string; telegramId: string }) {
+    const response = await this.client.post('/auth/verify-code', data);
     if (response.data.token) {
       this.setAuthToken(response.data.token);
     }
-    return response.data;
-  }
-
-  async verifyEmail(token: string, email: string) {
-    return this.client.post('/auth/verify-email', { token, email });
+    return response;
   }
 
   async getCurrentUser() {
@@ -240,4 +230,3 @@ export interface GroupMember {
   penaltiesPaid?: number;
   completionRate?: number;
 }
-

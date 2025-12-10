@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 
 export function generateVerificationToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+  // Generate a 6-digit code between 100000 and 999999
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 export function generateId(prefix: string = ''): string {
@@ -35,4 +36,3 @@ export function isDeadlinePassed(deadlineTime: string | null | undefined): boole
   if (currentHour === deadlineHour && currentMinute >= deadlineMinute) return true;
   return false;
 }
-

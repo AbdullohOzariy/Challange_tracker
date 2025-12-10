@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { apiClient } from './services/apiClient';
 import { useAppContext } from './context/AppContext';
 import { IconLogOut, IconPlus, IconUsers } from '../components/Icons.tsx';
 
 const App: React.FC = () => {
   const { user, setUser, groups, setGroups, loading, setLoading, error, setError, currentGroupId, setCurrentGroupId, logout } = useAppContext();
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [loginCode, setLoginCode] = useState('');
+  const [telegramId, setTelegramId] = useState(''); // To store Telegram ID from bot
 
   // Check if user is already logged in
   useEffect(() => {
@@ -30,10 +33,43 @@ const App: React.FC = () => {
     checkAuth();
   }, [setUser, setGroups, setLoading]);
 
-  // Handle Telegram login
+  // Handle Telegram login (redirect to bot)
   const handleTelegramLogin = () => {
     const botUsername = "tekshiruv_verfbot";
     window.open(`https://t.me/${botUsername}?start=login`, '_blank');
+    setShowCodeInput(true); // Show code input after redirecting to bot
+  };
+
+  // Handle code submission
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setError(null);
+      // You'll need to get the telegramId from somewhere, e.g., from the bot's start payload
+      // For now, let's assume you get it from the user or a cookie/local storage after bot interaction
+      // This part needs refinement based on how you get telegramId after bot interaction
+      const tempTelegramId = prompt("Please enter your Telegram ID (from the bot's /start message if available):");
+      if (!tempTelegramId) {
+        setError("Telegram ID is required.");
+        return;
+      }
+      setTelegramId(tempTelegramId);
+
+
+      const response = await apiClient.verifyCode({ code: loginCode, telegramId: tempTelegramId });
+      localStorage.setItem('auth_token', response.data.token);
+      setUser(response.data.user);
+      setShowCodeInput(false);
+      setLoginCode('');
+      setTelegramId('');
+
+      // Reload groups after successful login
+      const groupsResponse = await apiClient.getGroups();
+      setGroups(groupsResponse.data.groups);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Invalid code or Telegram ID.');
+    }
   };
 
   // Create new group
@@ -85,12 +121,34 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <button
-            onClick={handleTelegramLogin}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
-          >
-            🤖 Login with Telegram Bot
-          </button>
+          {!showCodeInput ? (
+            <button
+              onClick={handleTelegramLogin}
+              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+            >
+              🤖 Login with Telegram Bot
+            </button>
+          ) : (
+            <form onSubmit={handleCodeSubmit} className="space-y-4">
+              <input
+                type="text"
+                value={loginCode}
+                onChange={(e) => setLoginCode(e.target.value)}
+                placeholder="Enter 6-digit code from bot"
+                maxLength={6}
+                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+              >
+                Verify Code
+              </button>
+              <p className="text-slate-400 text-xs text-center mt-6">
+                Check your Telegram bot for the login code.
+              </p>
+            </form>
+          )}
 
           <p className="text-slate-400 text-xs text-center mt-6">
             Click the button above to open Telegram and start the bot

@@ -8,47 +8,42 @@ import { generateVerificationToken } from '../utils/token.js';
 
 const router = Router();
 
-// Telegram Login Schema
-const TelegramLoginSchema = z.object({
-  telegramId: z.string(),
-  username: z.string().optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  photoUrl: z.string().optional(),
-});
-
-// Verification Token Schema
+// Schemas
 const VerificationSchema = z.object({
-  token: z.string(),
-  email: z.string().email(),
+  code: z.string().length(6),
+  telegramId: z.string(),
 });
 
-// Login with Telegram
-router.post('/telegram-login', async (req: Request, res: Response) => {
-  const body = TelegramLoginSchema.parse(req.body);
+// Verify login code
+router.post('/verify-code', async (req: Request, res: Response) => {
+  const body = VerificationSchema.parse(req.body);
 
   try {
-    // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { telegramId: body.telegramId },
+    const user = await prisma.user.findFirst({
+      where: {
+        telegramId: body.telegramId,
+        verificationToken: body.code,
+      },
     });
 
     if (!user) {
-      // Create new user
-      const verificationToken = generateVerificationToken();
-      user = await prisma.user.create({
-        data: {
-          telegramId: body.telegramId,
-          username: body.username,
-          firstName: body.firstName,
-          lastName: body.lastName,
-          photoUrl: body.photoUrl,
-          globalUserId: body.telegramId,
-          verificationToken,
-          verificationSentAt: new Date(),
-        },
-      });
+      throw new AppError(400, 'Invalid code or Telegram ID');
     }
+
+    // Check if token is expired (e.g., 5 minutes)
+    const tokenAge = Date.now() - (user.verificationSentAt?.getTime() || 0);
+    if (tokenAge > 5 * 60 * 1000) {
+      throw new AppError(400, 'Verification code expired. Please request a new one.');
+    }
+
+    // Update user
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        verificationToken: null, // Invalidate the token
+      },
+    });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -69,57 +64,8 @@ router.post('/telegram-login', async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         photoUrl: user.photoUrl,
-        isVerified: user.isVerified,
+        isVerified: true,
         globalUserId: user.globalUserId,
-      },
-    });
-  } catch (error) {
-    console.error('Telegram login error:', error);
-    throw new AppError(500, 'Login failed');
-  }
-});
-
-// Verify Email
-router.post('/verify-email', async (req: Request, res: Response) => {
-  const body = VerificationSchema.parse(req.body);
-
-  try {
-    const verification = await prisma.telegramVerification.findUnique({
-      where: { token: body.token },
-    });
-
-    if (!verification) {
-      throw new AppError(400, 'Invalid verification token');
-    }
-
-    if (new Date() > verification.expiresAt) {
-      throw new AppError(400, 'Verification token expired');
-    }
-
-    // Update user
-    const user = await prisma.user.update({
-      where: { id: verification.userId },
-      data: {
-        isVerified: true,
-        verificationToken: null,
-        email: body.email,
-      },
-    });
-
-    // Mark verification as completed
-    await prisma.telegramVerification.update({
-      where: { id: verification.id },
-      data: {
-        isVerified: true,
-        verifiedAt: new Date(),
-      },
-    });
-
-    res.json({
-      message: 'Email verified successfully',
-      user: {
-        id: user.id,
-        isVerified: user.isVerified,
       },
     });
   } catch (error) {
@@ -204,9 +150,3 @@ router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) =
 });
 
 export default router;
-
-// utils
-interface JwtPayload  {
-  userId: string;
-  telegramId: string;
-}

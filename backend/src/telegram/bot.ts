@@ -53,8 +53,6 @@ export class TelegrafBot {
   private setupCommands() {
     // /start command
     this.bot.start(async (ctx) => {
-      // const startParam = ctx.startPayload; // Unused
-
       try {
         if (!ctx.from) return;
 
@@ -86,24 +84,24 @@ export class TelegrafBot {
 I'm your personal habit tracking companion. Let's build better habits together! 💪
 
 <b>Commands:</b>
-/verify - Verify your account
+/verify - Get your login code
 /status - Check your progress
 /challenges - View active challenges
 /groups - View your groups
 /help - Get help
 
 <b>To get started:</b>
-1. Click /verify to link your account
-2. Join or create a group
-3. Set your first challenge
-4. Complete daily tasks
+1. Click /verify to get your login code
+2. Open the app and enter the code
+3. Join or create a group
+4. Set your first challenge
 5. Build your streak! 🔥
         `;
 
         await ctx.replyWithHTML(welcomeMessage, {
           reply_markup: {
             inline_keyboard: [
-              [{ text: '✅ Verify Account', callback_data: 'verify_start' }],
+              [{ text: '✅ Get Login Code', callback_data: 'verify_start' }],
               [{ text: '📱 Open HabitHero', url: process.env.FRONTEND_URL || 'https://habithero.app' }],
             ],
           },
@@ -122,27 +120,30 @@ I'm your personal habit tracking companion. Let's build better habits together! 
           return;
         }
 
-        // Check if already verified
-        if (ctx.user && await prisma.user.findUnique({ where: { id: ctx.user.id } }).then(u => u?.isVerified)) {
-          await ctx.reply('✅ Your account is already verified!');
+        const user = await prisma.user.findUnique({ where: { id: ctx.user.id } });
+        if (!user) {
+          await ctx.reply('❌ User not found. Please use /start first.');
           return;
         }
 
-        // Generate verification link
-        const user = await prisma.user.findUnique({ where: { id: ctx.user.id } });
-        const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${user?.verificationToken}`;
-
-        await ctx.replyWithHTML(`
-🔐 <b>Account Verification</b>
-
-Click the button below to verify your account and link it with HabitHero:
-        `, {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '✅ Verify Now', url: verificationLink }],
-            ],
+        // Generate and send verification code
+        const verificationCode = generateVerificationToken();
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            verificationToken: verificationCode,
+            verificationSentAt: new Date(),
           },
         });
+
+        await ctx.replyWithHTML(`
+🔐 <b>Your Login Code</b>
+
+Your one-time login code is:
+<code>${verificationCode}</code>
+
+Enter this code in the HabitHero app to log in.
+        `);
       } catch (error) {
         console.error('Verify command error:', error);
         await ctx.reply('❌ Error. Please try again.');
@@ -200,7 +201,7 @@ Click the button below to verify your account and link it with HabitHero:
 <b>HabitHero Bot Commands:</b>
 
 /start - Start the bot
-/verify - Verify your account
+/verify - Get your login code
 /status - Check your progress
 /challenges - View active challenges
 /groups - View your groups
@@ -226,24 +227,35 @@ Visit: ${process.env.FRONTEND_URL || 'https://habithero.app'}
     this.bot.action('verify_start', async (ctx) => {
       try {
         if (!ctx.user) {
-          await ctx.answerCbQuery('❌ User not found', { show_alert: true });
+          await ctx.answerCbQuery('❌ User not found. Please use /start first.', { show_alert: true });
           return;
         }
 
         const user = await prisma.user.findUnique({ where: { id: ctx.user.id } });
-        const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${user?.verificationToken}`;
+        if (!user) {
+          await ctx.answerCbQuery('❌ User not found. Please use /start first.', { show_alert: true });
+          return;
+        }
 
-        await ctx.answerCbQuery('Opening verification link...', { show_alert: false });
-        await ctx.editMessageText(`
-🔐 <b>Click the link below to verify:</b>
-        `, {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '✅ Verify Now', url: verificationLink }],
-            ],
+        // Generate and send verification code
+        const verificationCode = generateVerificationToken();
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            verificationToken: verificationCode,
+            verificationSentAt: new Date(),
           },
-          parse_mode: 'HTML',
         });
+
+        await ctx.answerCbQuery('Sending your login code...', { show_alert: false });
+        await ctx.replyWithHTML(`
+🔐 <b>Your Login Code</b>
+
+Your one-time login code is:
+<code>${verificationCode}</code>
+
+Enter this code in the HabitHero app to log in.
+        `);
       } catch (error) {
         console.error('Verify action error:', error);
         await ctx.answerCbQuery('❌ Error', { show_alert: true });
