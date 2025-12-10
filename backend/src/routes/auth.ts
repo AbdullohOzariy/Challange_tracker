@@ -30,9 +30,9 @@ router.post('/verify-code', async (req: Request, res: Response) => {
       throw new AppError(400, 'Invalid code or Telegram ID');
     }
 
-    // Check if token is expired (e.g., 5 minutes)
+    // Check if token is expired (1 minute = 60,000 ms)
     const tokenAge = Date.now() - (user.verificationSentAt?.getTime() || 0);
-    if (tokenAge > 5 * 60 * 1000) {
+    if (tokenAge > 1 * 60 * 1000) {
       throw new AppError(400, 'Verification code expired. Please request a new one.');
     }
 
