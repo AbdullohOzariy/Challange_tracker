@@ -70,7 +70,7 @@ export class TelegrafBot {
               username: ctx.from.username,
               firstName: ctx.from.first_name,
               lastName: ctx.from.last_name,
-              photoUrl: null, // Telegram doesn't provide photo URL directly in message
+              photoUrl: null,
               globalUserId: ctx.from.id.toString(),
               verificationToken,
               verificationSentAt: new Date(),
@@ -84,25 +84,17 @@ export class TelegrafBot {
 I'm your personal habit tracking companion. Let's build better habits together! 💪
 
 <b>Commands:</b>
-/verify - Get your login code
+/verify - Get your login link
 /status - Check your progress
 /challenges - View active challenges
 /groups - View your groups
 /help - Get help
-
-<b>To get started:</b>
-1. Click /verify to get your login code
-2. Open the app and enter the code
-3. Join or create a group
-4. Set your first challenge
-5. Build your streak! 🔥
         `;
 
         await ctx.replyWithHTML(welcomeMessage, {
           reply_markup: {
             inline_keyboard: [
-              [{ text: '✅ Get Login Code', callback_data: 'verify_start' }],
-              [{ text: '📱 Open HabitHero', url: process.env.FRONTEND_URL || 'https://habithero.app' }],
+              [{ text: '🔐 Login to HabitHero', callback_data: 'verify_start' }],
             ],
           },
         });
@@ -126,7 +118,7 @@ I'm your personal habit tracking companion. Let's build better habits together! 
           return;
         }
 
-        // Generate and send verification code
+        // Generate verification code
         const verificationCode = generateVerificationToken();
         await prisma.user.update({
           where: { id: user.id },
@@ -136,14 +128,19 @@ I'm your personal habit tracking companion. Let's build better habits together! 
           },
         });
 
+        const loginUrl = `${process.env.FRONTEND_URL}?code=${verificationCode}&tid=${user.telegramId}`;
+
         await ctx.replyWithHTML(`
-🔐 <b>Your Login Code</b>
+🔐 <b>Login Link</b>
 
-Your one-time login code is:
-<code>${verificationCode}</code>
-
-Enter this code in the HabitHero app to log in.
-        `);
+Click the button below to log in automatically:
+        `, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🚀 Login Now', url: loginUrl }],
+            ],
+          },
+        });
       } catch (error) {
         console.error('Verify command error:', error);
         await ctx.reply('❌ Error. Please try again.');
@@ -201,21 +198,11 @@ Enter this code in the HabitHero app to log in.
 <b>HabitHero Bot Commands:</b>
 
 /start - Start the bot
-/verify - Get your login code
+/verify - Get login link
 /status - Check your progress
 /challenges - View active challenges
 /groups - View your groups
 /help - Show this message
-
-<b>Features:</b>
-✅ Track daily habits
-✅ Join groups
-✅ Complete challenges
-✅ Compete with friends
-✅ Get motivation
-
-<b>Need help?</b>
-Visit: ${process.env.FRONTEND_URL || 'https://habithero.app'}
       `;
 
       await ctx.replyWithHTML(helpText);
@@ -237,7 +224,7 @@ Visit: ${process.env.FRONTEND_URL || 'https://habithero.app'}
           return;
         }
 
-        // Generate and send verification code
+        // Generate verification code
         const verificationCode = generateVerificationToken();
         await prisma.user.update({
           where: { id: user.id },
@@ -247,15 +234,20 @@ Visit: ${process.env.FRONTEND_URL || 'https://habithero.app'}
           },
         });
 
-        await ctx.answerCbQuery('Sending your login code...', { show_alert: false });
+        const loginUrl = `${process.env.FRONTEND_URL}?code=${verificationCode}&tid=${user.telegramId}`;
+
+        await ctx.answerCbQuery('Generating login link...', { show_alert: false });
         await ctx.replyWithHTML(`
-🔐 <b>Your Login Code</b>
+🔐 <b>Login Link</b>
 
-Your one-time login code is:
-<code>${verificationCode}</code>
-
-Enter this code in the HabitHero app to log in.
-        `);
+Click the button below to log in automatically:
+        `, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🚀 Login Now', url: loginUrl }],
+            ],
+          },
+        });
       } catch (error) {
         console.error('Verify action error:', error);
         await ctx.answerCbQuery('❌ Error', { show_alert: true });
