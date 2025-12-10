@@ -68,13 +68,19 @@ const server = app.listen(PORT, async () => {
     await prisma.$queryRaw`SELECT 1`;
     console.log('✅ Database connected');
 
-    // Start Telegram bot
-    await bot.launch();
-    console.log('✅ Telegram bot started');
-
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📝 API: http://localhost:${PORT}/api`);
     console.log(`🤖 Telegram Bot: @${process.env.TELEGRAM_BOT_USERNAME || 'habithero_bot'}`);
+
+    // Start Telegram bot (non-blocking)
+    bot.launch().then(() => {
+      console.log('✅ Telegram bot started');
+    }).catch((error) => {
+      console.error('⚠️ Telegram bot launch error:', error.message);
+      // Don't exit process, just log error.
+      // This handles the "Conflict: terminated by other getUpdates request" error gracefully.
+    });
+
   } catch (error) {
     console.error('❌ Server startup error:', error);
     process.exit(1);
@@ -87,7 +93,11 @@ const gracefulShutdown = async () => {
 
   server.close(async () => {
     await prisma.$disconnect();
-    await bot.stop();
+    try {
+      await bot.stop();
+    } catch (e) {
+      console.error('Error stopping bot:', e);
+    }
     console.log('✅ Shutdown complete');
     process.exit(0);
   });
