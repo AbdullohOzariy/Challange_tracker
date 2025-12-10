@@ -8,6 +8,7 @@ const App: React.FC = () => {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [loginCode, setLoginCode] = useState('');
   const [telegramId, setTelegramId] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   // Check for existing token
   useEffect(() => {
@@ -70,22 +71,37 @@ const App: React.FC = () => {
 
   // Create new group
   const handleCreateGroup = async () => {
-    const name = prompt('Enter group name:');
+    // Use prompt for now (quick); trim and validate
+    const name = (prompt('Enter group name:') || '').trim();
     if (!name) return;
 
     try {
+      setCreatingGroup(true);
       setError(null);
-      await apiClient.createGroup({
+      // Optionally show global loading too
+      setLoading(true);
+
+      const createResp = await apiClient.createGroup({
         name,
         icon: '✨',
         theme: 'indigo',
       });
 
-      // Reload groups
+      // Prefer to reload groups from server for canonical state
       const groupsResponse = await apiClient.getGroups();
-      setGroups(groupsResponse.data.groups);
+      setGroups(groupsResponse.data.groups || []);
+
+      // If backend returned the created group directly, set it as current
+      const createdGroup = createResp?.data?.group || (groupsResponse.data.groups[0] ?? null);
+      if (createdGroup) {
+        setCurrentGroupId(createdGroup.id);
+      }
     } catch (err) {
+      console.error('Create group failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to create group');
+    } finally {
+      setCreatingGroup(false);
+      setLoading(false);
     }
   };
 
