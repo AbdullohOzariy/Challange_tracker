@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../index.js';
+import { prisma, bot } from '../index.js';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateVerificationToken } from '../utils/token.js';
@@ -12,6 +12,66 @@ const router = Router();
 const VerificationSchema = z.object({
   code: z.string().length(6),
   telegramId: z.string(),
+});
+
+const RequestCodeSchema = z.object({
+  telegramId: z.string(),
+});
+
+// Request code (frontend-triggered) - creates/sends a code to the given Telegram ID
+router.post('/request-code', async (req: Request, res: Response) => {
+  const body = RequestCodeSchema.parse(req.body);
+
+  try {
+    // Find or create user for this telegramId
+    let user = await prisma.user.findUnique({ where: { telegramId: body.telegramId } });
+
+    if (!user) {
+      // create a lightweight user record so we can attach the token
+      const verificationToken = generateVerificationToken();
+      user = await prisma.user.create({
+        data: {
+          telegramId: body.telegramId,
+          username: null,
+          firstName: null,
+          lastName: null,
+          photoUrl: null,
+          globalUserId: body.telegramId,
+          verificationToken,
+          verificationSentAt: new Date(),
+        },
+      });
+
+      // send message via bot
+      try {
+        await bot.sendMessage(body.telegramId, `🔐 Your HabitHero login code is: ${verificationToken}\nThis code is valid for 1 minute.`);
+      } catch (err) {
+        console.error('Failed to send code via bot (new user):', err);
+      }
+
+      return res.json({ message: 'Verification code sent' });
+    }
+
+    // Update existing user with new code
+    const verificationCode = generateVerificationToken();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken: verificationCode, verificationSentAt: new Date() },
+    });
+
+    // Try to send via bot
+    try {
+      await bot.sendMessage(body.telegramId, `🔐 Your HabitHero login code is: ${verificationCode}\nThis code is valid for 1 minute.`);
+    } catch (err) {
+      console.error('Failed to send code via bot (existing user):', err);
+      // Even if sending fails, respond success to avoid leaking info; frontend will show error if user doesn't receive code
+    }
+
+    res.json({ message: 'Verification code sent' });
+  } catch (error) {
+    console.error('Request code error:', error);
+    throw new AppError(500, 'Failed to request verification code');
+  }
 });
 
 // Verify login code

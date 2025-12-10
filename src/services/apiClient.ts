@@ -94,6 +94,10 @@ class APIClient {
     return response;
   }
 
+  async requestCode(data: { telegramId: string }) {
+    return this.client.post('/auth/request-code', data);
+  }
+
   async getCurrentUser() {
     return this.client.get('/auth/me');
   }

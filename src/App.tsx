@@ -13,6 +13,8 @@ const App: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [groupDetails, setGroupDetails] = useState<any | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
+  const [requestingCode, setRequestingCode] = useState(false);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // Check for existing token
   useEffect(() => {
@@ -70,6 +72,26 @@ const App: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Login failed. Invalid code or Telegram ID.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Request code from backend to send via bot
+  const handleRequestCode = async () => {
+    if (!telegramId) {
+      setError('Please enter your Telegram ID to request the code');
+      return;
+    }
+    try {
+      setRequestingCode(true);
+      setError(null);
+      setInfoMessage(null);
+      await apiClient.requestCode({ telegramId });
+      setInfoMessage('Verification code sent — check your Telegram. It is valid for 1 minute.');
+    } catch (err) {
+      console.error('Request code failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to request code');
+    } finally {
+      setRequestingCode(false);
     }
   };
 
@@ -158,13 +180,23 @@ const App: React.FC = () => {
             </button>
           ) : (
             <form onSubmit={handleCodeSubmit} className="space-y-4">
-              <input
-                type="text"
-                value={telegramId}
-                onChange={(e) => setTelegramId(e.target.value)}
-                placeholder="Enter your Telegram ID"
-                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={telegramId}
+                  onChange={(e) => setTelegramId(e.target.value)}
+                  placeholder="Enter your Telegram ID"
+                  className="flex-1 px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleRequestCode}
+                  disabled={requestingCode}
+                  className="px-3 py-3 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 hover:bg-slate-600"
+                >
+                  {requestingCode ? 'Sending...' : 'Request code'}
+                </button>
+              </div>
               <input
                 type="text"
                 value={loginCode}
@@ -179,6 +211,9 @@ const App: React.FC = () => {
               >
                 Verify
               </button>
+              {infoMessage && (
+                <div className="text-sm text-slate-300 mt-2">{infoMessage}</div>
+              )}
               <p className="text-slate-400 text-xs text-center mt-6">
                 Check your Telegram bot for the login code. You can get your Telegram ID from a bot like @userinfobot.
               </p>
