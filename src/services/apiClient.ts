@@ -2,6 +2,8 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+console.log('API Base URL:', API_BASE_URL); // Debugging log
+
 class APIClient {
   private client: AxiosInstance;
   private token: string | null = null;
@@ -24,6 +26,7 @@ class APIClient {
     this.client.interceptors.response.use(
       response => response,
       error => {
+        console.error('API Error:', error.response?.status, error.config?.url); // Debugging log
         if (error.response?.status === 401) {
           // Token expired or invalid
           this.clearAuth();
