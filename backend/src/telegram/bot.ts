@@ -11,7 +11,7 @@ export interface BotContext extends Context {
 }
 
 export class TelegrafBot {
-  private bot: Telegraf<BotContext>;
+  public bot: Telegraf<BotContext>;
 
   constructor() {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -245,44 +245,12 @@ Enter this code in the HabitHero app to log in.
     });
   }
 
-  async launch() {
-    const webhook = process.env.TELEGRAM_WEBHOOK_URL;
-
-    if (webhook) {
-      // Webhook mode for production
-      await this.bot.telegram.setWebhook(`${webhook}/api/telegram/webhook/${process.env.TELEGRAM_BOT_TOKEN}`);
-      console.log('🌐 Telegram bot webhook set');
-    } else {
-      // Polling mode for development
-      await this.bot.launch();
-      console.log('🔄 Telegram bot polling started');
-    }
+  async setWebhook(url: string) {
+    await this.bot.telegram.setWebhook(url);
+    console.log(`🌐 Telegram bot webhook set to: ${url}`);
   }
 
-  async stop() {
-    await this.bot.stop();
-  }
-
-  async sendMessage(telegramId: string, message: string, options?: any) {
-    try {
-      await this.bot.telegram.sendMessage(Number(telegramId), message, options);
-    } catch (error) {
-      console.error('Send message error:', error);
-    }
-  }
-
-  async sendNotification(userId: string, message: string) {
-    try {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (user) {
-        await this.sendMessage(user.telegramId, `🔔 ${message}`);
-      }
-    } catch (error) {
-      console.error('Send notification error:', error);
-    }
-  }
-
-  getBot() {
-    return this.bot;
+  async handleUpdate(update: any) {
+    await this.bot.handleUpdate(update);
   }
 }

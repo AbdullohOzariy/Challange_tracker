@@ -24,7 +24,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Health check
-app.get('/health', (_req: Request, res: Response) => { // _req is used to avoid unused variable error
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -40,10 +40,13 @@ app.use('/api/tasks', authMiddleware, taskRoutes);
 app.use('/api/analytics', authMiddleware, analyticsRoutes);
 
 // Telegram webhook
-app.post(`/api/telegram/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, (req: Request, res: Response) => {
-  bot.getBot().handleUpdate(req.body).catch((error) => { // Corrected method call
+const secretPath = `/api/telegram/webhook/${process.env.TELEGRAM_BOT_TOKEN}`;
+app.post(secretPath, async (req: Request, res: Response) => {
+  try {
+    await bot.handleUpdate(req.body);
+  } catch (error) {
     console.error('Telegram webhook error:', error);
-  });
+  }
   res.send('OK');
 });
 
@@ -68,19 +71,15 @@ const server = app.listen(PORT, async () => {
     await prisma.$queryRaw`SELECT 1`;
     console.log('✅ Database connected');
 
+    // Set webhook
+    if (process.env.NODE_ENV === 'production' && process.env.BACKEND_URL) {
+      const webhookUrl = `${process.env.BACKEND_URL}${secretPath}`;
+      await bot.setWebhook(webhookUrl);
+    } else {
+      console.log('⚠️ Webhook not set in development mode. Use polling.');
+    }
+
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📝 API: http://localhost:${PORT}/api`);
-    console.log(`🤖 Telegram Bot: @${process.env.TELEGRAM_BOT_USERNAME || 'habithero_bot'}`);
-
-    // Start Telegram bot (non-blocking)
-    bot.launch().then(() => {
-      console.log('✅ Telegram bot started');
-    }).catch((error) => {
-      console.error('⚠️ Telegram bot launch error:', error.message);
-      // Don't exit process, just log error.
-      // This handles the "Conflict: terminated by other getUpdates request" error gracefully.
-    });
-
   } catch (error) {
     console.error('❌ Server startup error:', error);
     process.exit(1);
@@ -90,23 +89,11 @@ const server = app.listen(PORT, async () => {
 // Graceful shutdown
 const gracefulShutdown = async () => {
   console.log('Shutting down gracefully...');
-
-  server.close(async () => {
-    await prisma.$disconnect();
-    try {
-      await bot.stop();
-    } catch (e) {
-      console.error('Error stopping bot:', e);
-    }
+  server.close(() => {
+    prisma.$disconnect();
     console.log('✅ Shutdown complete');
     process.exit(0);
   });
-
-  // Force shutdown after 10 seconds
-  setTimeout(() => {
-    console.error('❌ Forced shutdown');
-    process.exit(1);
-  }, 10000);
 };
 
 process.on('SIGINT', gracefulShutdown);
