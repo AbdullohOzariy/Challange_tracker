@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../index.js';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -20,6 +20,7 @@ const TelegramLoginSchema = z.object({
 // Verification Token Schema
 const VerificationSchema = z.object({
   token: z.string(),
+  email: z.string().email(),
 });
 
 // Login with Telegram
@@ -209,5 +210,3 @@ interface JwtPayload  {
   userId: string;
   telegramId: string;
 }
-
-
