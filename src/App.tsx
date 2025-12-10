@@ -31,13 +31,10 @@ const App: React.FC = () => {
   }, [setUser, setGroups, setLoading]);
 
   // Handle Telegram login
-  const handleTelegramLogin = async () => {
-    try {
-      setError(null);
-      alert('Open Telegram and search for your bot name\nThen send /start command');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    }
+  const handleTelegramLogin = () => {
+    // TODO: Replace with your actual bot username
+    const botUsername = "habithero_tracker_bot";
+    window.open(`https://t.me/${botUsername}?start=login`, '_blank');
   };
 
   // Create new group
@@ -97,7 +94,7 @@ const App: React.FC = () => {
           </button>
 
           <p className="text-slate-400 text-xs text-center mt-6">
-            Find our Telegram bot and send /start to login
+            Click the button above to open Telegram and start the bot
           </p>
         </div>
       </div>

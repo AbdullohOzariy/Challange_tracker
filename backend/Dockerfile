@@ -6,6 +6,10 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
+# --- DIAGNOSTIC STEP ---
+# Print the contents of package.json to the build log
+RUN echo "--- Verifying package.json contents ---" && cat package.json && echo "--- End of package.json ---"
+
 # Clean npm cache and install dependencies
 RUN npm cache clean --force
 RUN npm install
