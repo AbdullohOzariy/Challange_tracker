@@ -32,8 +32,7 @@ const App: React.FC = () => {
 
   // Handle Telegram login
   const handleTelegramLogin = () => {
-    // TODO: Replace with your actual bot username
-    const botUsername = "habithero_tracker_bot";
+    const botUsername = "tekshiruv_verfbot";
     window.open(`https://t.me/${botUsername}?start=login`, '_blank');
   };
 
