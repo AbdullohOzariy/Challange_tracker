@@ -15,9 +15,28 @@ const app: Express = express();
 export const prisma = new PrismaClient();
 export const bot = new TelegrafBot();
 
+// Normalize FRONTEND_URL env: allow comma-separated list, and ensure values include scheme (https://)
+const rawFrontend = process.env.FRONTEND_URL || '';
+const defaultLocal = 'http://localhost:5173';
+const parseOrigins = (raw: string) => {
+  if (!raw) return [defaultLocal];
+  return raw.split(',').map(s => s.trim()).filter(Boolean).map(u => {
+    if (/^https?:\/\//i.test(u)) return u;
+    // assume https if no scheme provided
+    return `https://${u}`;
+  });
+};
+const allowedOrigins = parseOrigins(rawFrontend);
+console.log('Allowed CORS origins:', allowedOrigins);
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // allow non-browser requests like curl/postman (no origin)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
