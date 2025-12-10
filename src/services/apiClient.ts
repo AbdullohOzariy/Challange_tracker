@@ -1,12 +1,9 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+// Hardcoded backend URL to bypass environment variable issues
+const API_BASE_URL = 'https://backend-production-91af8.up.railway.app/api';
 
-console.log('API Base URL:', API_BASE_URL); // Debugging log
-
-if (!API_BASE_URL) {
-  console.error('FATAL ERROR: VITE_API_URL is not defined!');
-}
+console.log('API Base URL:', API_BASE_URL);
 
 class APIClient {
   private client: AxiosInstance;
@@ -30,7 +27,7 @@ class APIClient {
     this.client.interceptors.response.use(
       response => response,
       error => {
-        console.error('API Error:', error.response?.status, error.config?.url); // Debugging log
+        console.error('API Error:', error.response?.status, error.config?.url);
         if (error.response?.status === 401) {
           // Token expired or invalid
           this.clearAuth();
