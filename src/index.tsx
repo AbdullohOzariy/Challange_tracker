@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import DesignHome from './pages/DesignHome';
 import { AppProvider } from './context/AppContext';
 import './index.css';
 
@@ -10,11 +11,13 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+const urlParams = new URLSearchParams(window.location.search);
+const useDesign = urlParams.get('design') === '1';
+
 root.render(
   <React.StrictMode>
     <AppProvider>
-      <App />
+      {useDesign ? <DesignHome /> : <App />}
     </AppProvider>
   </React.StrictMode>
 );
-
