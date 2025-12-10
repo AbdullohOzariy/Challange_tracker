@@ -72,11 +72,16 @@ const server = app.listen(PORT, async () => {
     console.log('✅ Database connected');
 
     // Set webhook
-    if (process.env.NODE_ENV === 'production' && process.env.BACKEND_URL) {
-      const webhookUrl = `${process.env.BACKEND_URL}${secretPath}`;
-      await bot.setWebhook(webhookUrl);
+    if (process.env.NODE_ENV === 'production') {
+      const webhookBase = process.env.BACKEND_URL || process.env.TELEGRAM_WEBHOOK_URL;
+      if (webhookBase) {
+        const webhookUrl = `${webhookBase}${secretPath}`;
+        await bot.setWebhook(webhookUrl);
+      } else {
+        console.log('⚠️ No BACKEND_URL or TELEGRAM_WEBHOOK_URL set; webhook not configured.');
+      }
     } else {
-      console.log('⚠️ Webhook not set in development mode. Use polling.');
+      console.log('⚠️ Webhook not set in development mode. Use polling or set TELEGRAM_WEBHOOK_URL.');
     }
 
     console.log(`🚀 Server running on port ${PORT}`);
