@@ -83,6 +83,10 @@ export class TelegrafBot {
 
 I'm your personal habit tracking companion. Let's build better habits together! 💪
 
+<b>Important:</b> Your Telegram ID is <code>${ctx.from.id}</code>. Use this ID in the app when you enter your login code.
+
+<b>Code validity:</b> Login codes are 6-digit numbers valid for 1 minute.
+
 <b>Commands:</b>
 /verify - Get your login code
 /status - Check your progress
@@ -134,7 +138,11 @@ I'm your personal habit tracking companion. Let's build better habits together! 
 Your one-time login code is:
 <code>${verificationCode}</code>
 
-Enter this code in the HabitHero app to log in.
+This code is valid for 1 minute.
+
+Your Telegram ID: <code>${ctx.from.id}</code>
+
+Enter this code and your Telegram ID in the HabitHero app to log in.
         `);
       } catch (error) {
         console.error('Verify command error:', error);
@@ -236,7 +244,11 @@ Enter this code in the HabitHero app to log in.
 Your one-time login code is:
 <code>${verificationCode}</code>
 
-Enter this code in the HabitHero app to log in.
+This code is valid for 1 minute.
+
+Your Telegram ID: <code>${ctx.from.id}</code>
+
+Enter this code and your Telegram ID in the HabitHero app to log in.
         `);
       } catch (error) {
         console.error('Verify action error:', error);
