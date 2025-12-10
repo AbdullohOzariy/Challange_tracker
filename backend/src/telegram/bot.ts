@@ -53,12 +53,14 @@ export class TelegrafBot {
   private setupCommands() {
     // /start command
     this.bot.start(async (ctx) => {
-      const startParam = ctx.startPayload;
+      // const startParam = ctx.startPayload; // Unused
 
       try {
+        if (!ctx.from) return;
+
         // Check if user exists
         let user = await prisma.user.findUnique({
-          where: { telegramId: ctx.from!.id.toString() },
+          where: { telegramId: ctx.from.id.toString() },
         });
 
         if (!user) {
@@ -66,12 +68,12 @@ export class TelegrafBot {
           const verificationToken = generateVerificationToken();
           user = await prisma.user.create({
             data: {
-              telegramId: ctx.from!.id.toString(),
-              username: ctx.from!.username,
-              firstName: ctx.from!.first_name,
-              lastName: ctx.from!.last_name,
-              photoUrl: ctx.from!.photo_url,
-              globalUserId: ctx.from!.id.toString(),
+              telegramId: ctx.from.id.toString(),
+              username: ctx.from.username,
+              firstName: ctx.from.first_name,
+              lastName: ctx.from.last_name,
+              photoUrl: null, // Telegram doesn't provide photo URL directly in message
+              globalUserId: ctx.from.id.toString(),
               verificationToken,
               verificationSentAt: new Date(),
             },
@@ -290,4 +292,3 @@ Visit: ${process.env.FRONTEND_URL || 'https://habithero.app'}
     return this.bot;
   }
 }
-

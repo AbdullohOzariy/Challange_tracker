@@ -70,6 +70,7 @@ router.post('/complete', authMiddleware, async (req: AuthRequest, res) => {
         taskId: body.taskId,
         challengeId: body.challengeId,
         memberId: membership.id,
+        userId: req.user!.id,
         proofUrl: body.proofUrl,
         notes: body.notes,
       },
@@ -246,4 +247,3 @@ router.delete('/completions/:completionId', authMiddleware, async (req: AuthRequ
 });
 
 export default router;
-

@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import 'express-async-errors';
 import { PrismaClient } from '@prisma/client';
@@ -24,7 +24,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Health check
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => { // _req is used to avoid unused variable error
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -41,7 +41,7 @@ app.use('/api/analytics', authMiddleware, analyticsRoutes);
 
 // Telegram webhook
 app.post(`/api/telegram/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, (req: Request, res: Response) => {
-  bot.handleUpdate(req.body).catch((error) => {
+  bot.getBot().handleUpdate(req.body).catch((error) => { // Corrected method call
     console.error('Telegram webhook error:', error);
   });
   res.send('OK');
@@ -103,4 +103,3 @@ process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
 export default app;
-
