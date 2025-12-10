@@ -127,6 +127,7 @@ model TaskCompletion {
   taskId            String
   challengeId       String
   memberId          String
+  userId            String
   proofUrl          String?    // Optional image/proof
   notes             String?
   completedAt       DateTime   @default(now())
@@ -135,6 +136,7 @@ model TaskCompletion {
   task              Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
   challenge         Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   member            GroupMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, memberId])
   @@index([taskId])
@@ -186,4 +188,3 @@ model TelegramVerification {
   @@index([telegramId])
   @@index([isVerified])
 }
-
