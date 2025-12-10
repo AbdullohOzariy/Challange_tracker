@@ -8,13 +8,22 @@ const App: React.FC = () => {
 
   // Check for login code in URL and existing token
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const tid = urlParams.get('tid');
+    const checkAuth = async () => {
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        if (loading) {
+          setLoading(false);
+          setError('Connection timeout. Please check your internet or try again later.');
+        }
+      }, 10000); // 10 seconds timeout
 
-    const handleLogin = async () => {
-      if (code && tid) {
-        try {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const tid = urlParams.get('tid');
+
+        if (code && tid) {
+          // Handle URL login
           setLoading(true);
           setError(null);
           const response = await apiClient.verifyCode({ code, telegramId: tid });
@@ -27,33 +36,34 @@ const App: React.FC = () => {
           // Reload groups after successful login
           const groupsResponse = await apiClient.getGroups();
           setGroups(groupsResponse.data.groups);
-
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'Login failed. Invalid or expired link.');
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        // If no code, check for existing token
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          try {
+        } else {
+          // Check for existing token
+          const token = localStorage.getItem('auth_token');
+          if (token) {
             setLoading(true);
             const response = await apiClient.getCurrentUser();
             setUser(response.data.user);
             const groupsResponse = await apiClient.getGroups();
             setGroups(groupsResponse.data.groups);
-          } catch (err) {
-            console.error('Auth check failed:', err);
-            localStorage.removeItem('auth_token');
-          } finally {
-            setLoading(false);
           }
         }
+      } catch (err) {
+        console.error('Auth check failed:', err);
+        // Only remove token if it's an auth error (401), not connection error
+        if (err instanceof Error && (err as any).response?.status === 401) {
+          localStorage.removeItem('auth_token');
+        }
+        // Don't show error for initial load if just no token
+        if (localStorage.getItem('auth_token') || window.location.search.includes('code')) {
+           setError(err instanceof Error ? err.message : 'Authentication failed');
+        }
+      } finally {
+        clearTimeout(timeoutId);
+        setLoading(false);
       }
     };
 
-    handleLogin();
+    checkAuth();
   }, [setUser, setGroups, setLoading, setError]);
 
   // Handle Telegram login (redirect to bot)
@@ -89,6 +99,7 @@ const App: React.FC = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
           <p className="text-slate-400">Loading...</p>
+          <p className="text-slate-600 text-xs mt-2">Connecting to server...</p>
         </div>
       </div>
     );
