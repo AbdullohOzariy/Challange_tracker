@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { apiClient } from './services/apiClient';
 import { useAppContext } from './context/AppContext';
 import { IconLogOut, IconPlus, IconUsers } from './components/Icons';
+import CreateGroupModal from './components/CreateGroupModal';
 
 const App: React.FC = () => {
   const { user, setUser, groups, setGroups, loading, setLoading, error, setError, currentGroupId, setCurrentGroupId, logout } = useAppContext();
@@ -9,6 +10,9 @@ const App: React.FC = () => {
   const [loginCode, setLoginCode] = useState('');
   const [telegramId, setTelegramId] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [groupDetails, setGroupDetails] = useState<any | null>(null);
+  const [groupLoading, setGroupLoading] = useState(false);
 
   // Check for existing token
   useEffect(() => {
@@ -69,39 +73,51 @@ const App: React.FC = () => {
     }
   };
 
-  // Create new group
-  const handleCreateGroup = async () => {
-    // Use prompt for now (quick); trim and validate
-    const name = (prompt('Enter group name:') || '').trim();
-    if (!name) return;
-
+  // Create new group (from modal)
+  const handleCreateGroupModal = async (payload: { name: string; icon?: string; theme?: string }) => {
     try {
       setCreatingGroup(true);
       setError(null);
-      // Optionally show global loading too
       setLoading(true);
 
       const createResp = await apiClient.createGroup({
-        name,
-        icon: '✨',
-        theme: 'indigo',
+        name: payload.name,
+        icon: payload.icon || '✨',
+        theme: payload.theme || 'indigo',
       });
 
-      // Prefer to reload groups from server for canonical state
+      // Refresh groups
       const groupsResponse = await apiClient.getGroups();
       setGroups(groupsResponse.data.groups || []);
 
-      // If backend returned the created group directly, set it as current
       const createdGroup = createResp?.data?.group || (groupsResponse.data.groups[0] ?? null);
-      if (createdGroup) {
-        setCurrentGroupId(createdGroup.id);
-      }
+      if (createdGroup) setCurrentGroupId(createdGroup.id);
+
+      setIsCreateModalOpen(false);
     } catch (err) {
       console.error('Create group failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to create group');
+      throw err;
     } finally {
       setCreatingGroup(false);
       setLoading(false);
+    }
+  };
+
+  // Open group and load its details
+  const openGroup = async (groupId: string) => {
+    try {
+      setGroupLoading(true);
+      setError(null);
+      setCurrentGroupId(groupId);
+      const resp = await apiClient.getGroup(groupId);
+      setGroupDetails(resp.data.group || resp.data || null);
+    } catch (err) {
+      console.error('Failed to load group details:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load group');
+      setGroupDetails(null);
+    } finally {
+      setGroupLoading(false);
     }
   };
 
@@ -189,7 +205,7 @@ const App: React.FC = () => {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={handleCreateGroup}
+              onClick={() => setIsCreateModalOpen(true)}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-all"
             >
               <IconPlus className="w-5 h-5" />
@@ -232,7 +248,7 @@ const App: React.FC = () => {
             {groups.map((group) => (
               <div
                 key={group.id}
-                onClick={() => setCurrentGroupId(group.id)}
+                onClick={() => openGroup(group.id)}
                 className={`bg-slate-800/50 backdrop-blur border ${
                   currentGroupId === group.id ? 'border-indigo-500' : 'border-slate-700'
                 } rounded-xl p-6 cursor-pointer hover:border-indigo-500 transition-all transform hover:scale-105`}
@@ -249,12 +265,67 @@ const App: React.FC = () => {
         )}
 
         {currentGroupId && (
-          <div className="mt-8 bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6">
-            <h2 className="text-2xl font-bold text-slate-200 mb-4">Group Details</h2>
-            <p className="text-slate-400">Group ID: {currentGroupId}</p>
-            <p className="text-slate-400 text-sm mt-4">
-              ℹ️ Full group management coming soon in expanded views
-            </p>
+          <div className="mt-8">
+            {groupLoading ? (
+              <div className="bg-slate-900/80 p-6 rounded-xl border border-slate-700 text-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                <p className="text-slate-400">Loading group...</p>
+              </div>
+            ) : groupDetails ? (
+              <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-200 mb-2">{groupDetails.name}</h2>
+                    <p className="text-slate-400 mb-4">{groupDetails.description || 'No description'}</p>
+                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                      <span>👥 {groupDetails.memberCount ?? groupDetails.members?.length ?? 0} members</span>
+                      <span>🔥 {groupDetails.activeChallenges ?? groupDetails.challenges?.length ?? 0} active</span>
+                      <span className="text-xs">ID: {groupDetails.id}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setCurrentGroupId(null); setGroupDetails(null); }} className="px-3 py-2 rounded-lg border border-slate-700 text-slate-300">Back</button>
+                  </div>
+                </div>
+
+                {/* Members */}
+                <div className="mt-6">
+                  <h3 className="text-sm text-slate-300 font-semibold mb-2">Members</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {(groupDetails.members || []).map((m: any) => (
+                      <div key={m.id} className="bg-slate-900/60 p-3 rounded-lg">
+                        <div className="text-slate-200 font-medium">{m.displayName}</div>
+                        <div className="text-xs text-slate-400">{m.user?.username || ''}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Challenges */}
+                <div className="mt-6">
+                  <h3 className="text-sm text-slate-300 font-semibold mb-2">Challenges</h3>
+                  {(groupDetails.challenges || []).length === 0 ? (
+                    <p className="text-slate-400 text-sm">No challenges yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(groupDetails.challenges || []).map((c: any) => (
+                        <div key={c.id} className="bg-slate-900/60 p-3 rounded-lg">
+                          <div className="text-slate-200 font-medium">{c.title}</div>
+                          <div className="text-xs text-slate-400">{c.category} • {c.status}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6 text-center">
+                <p className="text-slate-400">Group not found or failed to load.</p>
+                <div className="mt-3">
+                  <button onClick={() => { setCurrentGroupId(null); setGroupDetails(null); }} className="px-3 py-2 rounded-lg border border-slate-700 text-slate-300">Back</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -265,6 +336,9 @@ const App: React.FC = () => {
           <p>HabitHero © 2025 • Build better habits together</p>
         </div>
       </footer>
+
+      {/* Render create modal */}
+      <CreateGroupModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} onCreate={handleCreateGroupModal} loading={creatingGroup} />
     </div>
   );
 };
