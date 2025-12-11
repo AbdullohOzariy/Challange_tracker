@@ -11,13 +11,11 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-const urlParams = new URLSearchParams(window.location.search);
-const useDesign = urlParams.get('design') === '1';
 
 root.render(
   <React.StrictMode>
     <AppProvider>
-      {useDesign ? <DesignHome /> : <App />}
+      <DesignHome />
     </AppProvider>
   </React.StrictMode>
 );
